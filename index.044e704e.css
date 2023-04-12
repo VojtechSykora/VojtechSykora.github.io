@@ -13344,4 +13344,34 @@ body {
   margin-left: auto;
 }
 
+.loading-overlay {
+  width: 100vw;
+  height: 100vh;
+  z-index: 20;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  display: flex;
+  position: absolute;
+}
+
+.loading-spinner {
+  width: 10rem;
+  height: 10rem;
+}
+
+.loading-text {
+  padding: 0 2rem;
+  font-size: 2rem;
+  font-weight: 500;
+  position: relative;
+}
+
+.loading-dots {
+  font-size: 2rem;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 /*# sourceMappingURL=index.044e704e.css.map */
