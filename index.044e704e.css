@@ -13374,4 +13374,52 @@ body {
   right: 0;
 }
 
+.legend-container {
+  z-index: 2;
+  flex-direction: column;
+  display: flex;
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+}
+
+.legend-color {
+  width: 2rem;
+  height: 1rem;
+  margin-right: .5rem;
+}
+
+.legend-item {
+  flex-direction: row;
+  align-items: center;
+  display: flex;
+}
+
+.color-diff-none {
+  background-color: #3dab1b;
+}
+
+.color-diff-minor {
+  background-color: #85ab1b;
+}
+
+.color-diff-medium {
+  background-color: #ab981b;
+}
+
+.color-diff-major {
+  background-color: #b00505;
+}
+
+.color-diff-extreme {
+  background-color: #000;
+}
+
+.joint-select {
+  background-color: #fff;
+  border: 1px solid #7952b3;
+  border-radius: 5px;
+  padding: .5rem .2rem;
+}
+
 /*# sourceMappingURL=index.044e704e.css.map */

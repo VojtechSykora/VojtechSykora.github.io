@@ -579,8 +579,8 @@ skeletons.then((res)=>{
     canvasScene.start();
 }) // const skel1 = loader.loadDummyPose(seq6);
  // const skel2 = loader.loadDummyPose(seq7);
- // const mentorSkeleton = new Skeleton(skel2);
- // const pupilSkeleton = new Skeleton(skel1);
+ // const mentorSkeleton = new Skeleton(skel2, false);
+ // const pupilSkeleton = new Skeleton(skel1, true);
  // pupilSkeleton.calculateDeltaFromMentor(mentorSkeleton);
  // const mentor = new PaintedSkeleton(mentorSkeleton);
  // const pupil = new PaintedSkeleton(pupilSkeleton);
@@ -596,10 +596,14 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "Skeleton", ()=>Skeleton);
 var _dtwcalculator = require("../DTWCalculator");
 class Skeleton {
-    constructor(poses){
+    constructor(poses, isPupil){
         this.poses = poses;
         this.limbNormalizedPoses = [];
         this.deltaList = [];
+        this.deltaListNormalized = [];
+        this.activeDeltaList = this.deltaList;
+        this.isPupil = isPupil;
+        this.warpingPaths = [];
     }
     setPoses(poses) {
         this.poses = poses;
@@ -614,24 +618,36 @@ class Skeleton {
         return this.poses[index];
     }
     /**
-   * VERY MUCH NOT PRETTY 
+   * TODO: refactor this
    * 
    */ translateSkeleton(x, y, z) {
         this.poses.map((pose)=>pose.translatePose(x, y, z));
     }
     getJointDelta(jointIndex) {
-        return this.deltaList[jointIndex];
+        return this.activeDeltaList[jointIndex];
     }
     getFrameJointDelta(jointIndex, frame) {
-        return this.deltaList[jointIndex][frame];
+        return this.activeDeltaList[jointIndex][frame];
     }
     calculateDeltaFromMentor(mentor) {
-        this.deltaList = (0, _dtwcalculator.calculateWarpingPathDeltas)((0, _dtwcalculator.calculateDTW)(mentor, this));
+        this.warpingPaths = (0, _dtwcalculator.calculateDTW)(mentor, this);
+        this.deltaList = (0, _dtwcalculator.calculateWarpingPathDeltas)(this.warpingPaths);
+        this.activeDeltaList = this.deltaList;
     }
-    isPupil() {
-        return this.deltaList.length !== 0;
+    setDeltaListToNormalizedLimbs(mentor) {
+        if (this.deltaListNormalized.length == 0) {
+            this.limbNormalizedPoses = this.poses.map((pose)=>pose.normalizePoseToLimbParts());
+            const mentorNormalizedPoses = mentor.poses.map((pose)=>pose.normalizePoseToLimbParts());
+            this.deltaListNormalized = (0, _dtwcalculator.calculateWarpingPathDeltas)((0, _dtwcalculator.calculateDTWOnPoses)(mentorNormalizedPoses, this.limbNormalizedPoses));
+        }
+        this.activeDeltaList = this.deltaListNormalized;
     }
-    setDeltaListToNormalizedLimbs() {}
+    setDeltaListToDefault() {
+        this.activeDeltaList = this.deltaList;
+    }
+    getSwitchNormalizedLimbsFunction() {
+        return this.setDeltaListToNormalizedLimbs.bind(this);
+    }
 }
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","../DTWCalculator":"dogso"}],"gkKU3":[function(require,module,exports) {
@@ -668,13 +684,18 @@ exports.export = function(dest, destName, get) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "calculateDTW", ()=>calculateDTW);
+parcelHelpers.export(exports, "calculateDTWOnPoses", ()=>calculateDTWOnPoses);
 parcelHelpers.export(exports, "calculateWarpingPathDeltas", ()=>calculateWarpingPathDeltas);
+parcelHelpers.export(exports, "getJointFrameTracking", ()=>getJointFrameTracking);
 var _dtwmatrix = require("./Entities/DTWMatrix");
 const calculateDTW = (mentorSkeleton, pupilSkeleton)=>{
+    return calculateDTWOnPoses(mentorSkeleton.getPoses(), pupilSkeleton.getPoses());
+};
+const calculateDTWOnPoses = (mentorPoses, pupilPoses)=>{
     const warpingPaths = [];
     for(let index = 0; index < 31; index++){
-        const mentorJointTimeSequence = mentorSkeleton.getJointTimeSequence(index);
-        const pupilJointTimeSequence = pupilSkeleton.getJointTimeSequence(index);
+        const mentorJointTimeSequence = mentorPoses.map((pose)=>pose.getJointByIndex(index));
+        const pupilJointTimeSequence = pupilPoses.map((pose)=>pose.getJointByIndex(index));
         const matrix = new (0, _dtwmatrix.DTWMatrix)(mentorJointTimeSequence, pupilJointTimeSequence);
         warpingPaths.push(matrix.calculateWarpingDistance());
     }
@@ -693,14 +714,23 @@ const calculateWarpingPathDelta = (warpingPath)=>{
         deltaList[i] = 0;
         poseCount[i] = 0;
     }
-    while(warpingPath.length !== 0){
-        const warpingStep = warpingPath.pop();
+    for(let i = 0; i < warpingPath.length; i++){
+        const warpingStep = warpingPath[i];
         const pupilFrame = warpingStep.pupilFrame;
         deltaList[pupilFrame] += warpingStep.distance;
         poseCount[pupilFrame] += 1;
     }
     for(let i = 1; i <= maxFrames; i++)deltaList[i] = deltaList[i] / poseCount[i];
     return deltaList;
+};
+const getJointFrameTracking = (warpingPath)=>{
+    const maxFrames = warpingPath[warpingPath.length - 1].pupilFrame;
+    const frameList = Array(maxFrames + 1);
+    for(let i = 0; i <= maxFrames; i++)frameList[i] = 0;
+    warpingPath.map((warpingStep)=>{
+        frameList[warpingStep.pupilFrame] = warpingStep.mentorFrame;
+    });
+    return frameList;
 };
 
 },{"./Entities/DTWMatrix":"6yOzA","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"6yOzA":[function(require,module,exports) {
@@ -729,24 +759,23 @@ class DTWMatrix {
         const pupilSequenceLength = pupilSequence.length + 1;
         this.matrix = new Array(mentorSequenceLength);
         for(let i = 0; i < mentorSequenceLength; i++)this.matrix[i] = new Array(pupilSequenceLength);
-        for(let i = 0; i < mentorSequenceLength; i++)this.matrix[i][0] = new (0, _dtwmatrixCell.DTWMatrixCell)();
-        for(let i = 0; i < pupilSequenceLength; i++)this.matrix[0][i] = new (0, _dtwmatrixCell.DTWMatrixCell)();
-        this.matrix[0][0] = new (0, _dtwmatrixCell.DTWMatrixCell)(0);
+        for(let i = 0; i < mentorSequenceLength; i++)this.matrix[i][0] = new (0, _dtwmatrixCell.DTWMatrixCell)(Infinity);
+        for(let i = 0; i < pupilSequenceLength; i++)this.matrix[0][i] = new (0, _dtwmatrixCell.DTWMatrixCell)(Infinity);
+        this.matrix[0][0].distanceValue = 0;
         this.calculateDTW();
     }
     calculateDTW() {
         for(let i = 1; i < this.mentorSequence.length + 1; i++)for(let j = 1; j < this.pupilSequence.length + 1; j++)this.calculateDTWMatrixCell(i, j);
     }
     calculateDTWMatrixCell(i, j) {
+        const jointEuclidDistance = this.calculateJointDistance(this.pupilSequence[j - 1], this.mentorSequence[i - 1]);
         const matrixCellWindow = new (0, _dtwmatrixCellWindow.DTWMatrixCellWindow)(this.matrix[i - 1][j - 1], this.matrix[i][j - 1], this.matrix[i - 1][j], [
             i,
             j
         ]);
         const cellWindowMinimumResult = matrixCellWindow.findMinimalValue();
-        const jointEuclidDistance = this.calculateJointDistance(this.mentorSequence[i - 1], this.pupilSequence[j - 1]);
         const finalDistance = cellWindowMinimumResult[0] + jointEuclidDistance;
-        const computedCell = new (0, _dtwmatrixCell.DTWMatrixCell)();
-        computedCell.distanceValue = finalDistance;
+        const computedCell = new (0, _dtwmatrixCell.DTWMatrixCell)(finalDistance);
         computedCell.absoluteJointDistance = jointEuclidDistance;
         computedCell.setPreviousWarping(cellWindowMinimumResult[1]);
         this.matrix[i][j] = computedCell;
@@ -762,16 +791,14 @@ class DTWMatrix {
         const warpingPath = [];
         let i = this.mentorSequence.length;
         let j = this.pupilSequence.length;
-        let cumulativeDistance = 0;
         do {
             const currentCell = this.matrix[i][j];
-            const warpingStep = new (0, _warpingStep.WarpingStep)(j, i, currentCell.absoluteJointDistance);
+            const warpingStep = new (0, _warpingStep.WarpingStep)(j - 1, i - 1, currentCell.absoluteJointDistance);
             const indexes = currentCell.previousWarping;
-            cumulativeDistance += currentCell.distanceValue;
             warpingPath.push(warpingStep);
             i = indexes[0];
             j = indexes[1];
-        }while (i !== -1 && j !== -1);
+        }while (i !== 0 && j !== 0);
         return warpingPath.reverse();
     }
 }
@@ -784,7 +811,7 @@ class DTWMatrix {
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "DTWMatrixCell", ()=>DTWMatrixCell);
 class DTWMatrixCell {
-    constructor(distanceValue = Infinity){
+    constructor(distanceValue){
         this.distanceValue = distanceValue;
         this.previousWarping = [
             -1,
@@ -820,6 +847,13 @@ class DTWMatrixCellWindow {
         const minPreviousValue = Math.min(this.leftBottom.distanceValue, this.leftUpper.distanceValue, this.rightUpper.distanceValue);
         const i = this.cellIndex[0];
         const j = this.cellIndex[1];
+        if (minPreviousValue === this.leftUpper.distanceValue) return [
+            this.leftUpper.distanceValue,
+            [
+                i - 1,
+                j - 1
+            ]
+        ];
         if (minPreviousValue === this.leftBottom.distanceValue) return [
             this.leftBottom.distanceValue,
             [
@@ -827,14 +861,7 @@ class DTWMatrixCellWindow {
                 j - 1
             ]
         ];
-        else if (minPreviousValue === this.leftUpper.distanceValue) return [
-            this.leftUpper.distanceValue,
-            [
-                i - 1,
-                j - 1
-            ]
-        ];
-        return [
+        else return [
             this.rightUpper.distanceValue,
             [
                 i - 1,
@@ -2034,8 +2061,13 @@ parcelHelpers.export(exports, "PaintedSkeleton", ()=>PaintedSkeleton);
 var _three = require("three");
 var _paintUtils = require("../PaintUtils");
 var _skeletonPainter = require("../SkeletonPainter");
+var _thresholdDefinitions = require("../ThresholdDefinitions");
 var _bodyParts = require("./BodyParts");
 class PaintedSkeleton {
+    static thresholdZones = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS).map((thresholdSetting)=>{
+        const zones = (0, _skeletonPainter.SkeletonPainter).createThresholdZones(new (0, _three.Vector3)(0, 0, 0), thresholdSetting);
+        return zones;
+    });
     constructor(skeleton){
         const pose = skeleton.getPoses()[0];
         this.leftLeg = (0, _skeletonPainter.SkeletonPainter).createBones(pose.getLeftLeg());
@@ -2087,6 +2119,7 @@ class PaintedSkeleton {
             ...this.leftThumb,
             ...this.rightThumb
         ];
+        this.updateThresholdZonesPosition(newPose);
     }
     updateLimb(bodyPart, newPose) {
         const nextPose = newPose.getBodyPart(bodyPart);
@@ -2098,18 +2131,19 @@ class PaintedSkeleton {
             const path = new (0, _three.LineCurve3)(nextPose[i], nextPose[i + 1]);
             // const path = new LineCurve3(nextPose[i].add(this.translationOffset), nextPose[i + 1].add(this.translationOffset));
             //@ts-ignore
-            const geometry = new (0, _three.TubeGeometry)(path, 1, 0.2, 4, false);
+            const geometry = new (0, _three.TubeGeometry)(path, (0, _skeletonPainter.SkeletonPainter).BONE_TUBULAR_SEGMENTS, (0, _skeletonPainter.SkeletonPainter).BONE_RADIUS, (0, _skeletonPainter.SkeletonPainter).BONE_RADIAL_SEGMENTS, false);
             const position = geometry.getAttribute("position");
             const bone = bones[i];
             bone.geometry.setAttribute("position", position);
             geometry.dispose();
-            if (this.skeleton.isPupil()) {
+            if (this.skeleton.isPupil) {
                 const jointIndex = jointsConnectedIndices[i];
                 const jointIndex2 = jointsConnectedIndices[i + 1];
                 const delta1 = this.skeleton.getFrameJointDelta(jointIndex, this.currentFrame);
                 const delta2 = this.skeleton.getFrameJointDelta(jointIndex2, this.currentFrame);
-                const color = (0, _paintUtils.getBoneColor)(delta1, delta2);
-                bone.material.color = new (0, _three.Color)(color);
+                const color = (0, _paintUtils.getBoneColor)(delta1, jointIndex, delta2, jointIndex2);
+                //@ts-ignore
+                bone.material.color = color;
             }
         }
         // joint update
@@ -2119,12 +2153,12 @@ class PaintedSkeleton {
             const nextJointFrame = this.skeleton.getPose(this.currentFrame).getCoordinates()[jointIndex];
             //@ts-ignore
             joint.position.set(nextJointFrame.x, nextJointFrame.y, nextJointFrame.z);
-            if (this.skeleton.isPupil()) {
+            if (this.skeleton.isPupil) {
                 const delta = this.skeleton.getFrameJointDelta(jointIndex, this.currentFrame);
-                const color = (0, _paintUtils.getJointColor)(delta);
+                const color = (0, _paintUtils.getJointColor)(delta, jointIndex);
                 const material = joint.material;
                 //@ts-ignore
-                material.color = new (0, _three.Color)(color);
+                material.color = color;
             }
         }
     }
@@ -2175,9 +2209,23 @@ class PaintedSkeleton {
         this.translate(new (0, _three.Vector3)(-oldOffset.x, -oldOffset.y, -oldOffset.z));
         this.translate(vec);
     }
+    getShowedThresholdZones() {
+        if (this.thresholdSphereIndex) return PaintedSkeleton.thresholdZones[this.thresholdSphereIndex];
+        return [];
+    }
+    updateThresholdZonesPosition(pose) {
+        if (this.thresholdSphereIndex) {
+            const trackedJoint = pose.getJointByIndex(this.thresholdSphereIndex);
+            const spheres = PaintedSkeleton.thresholdZones[this.thresholdSphereIndex];
+            spheres.map((sphere)=>{
+                //@ts-ignore
+                sphere.position.set(trackedJoint.x, trackedJoint.y, trackedJoint.z);
+            });
+        }
+    }
 }
 
-},{"three":"ktPTu","../PaintUtils":"g9Da6","../SkeletonPainter":"8QOrm","./BodyParts":"9fyKh","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"ktPTu":[function(require,module,exports) {
+},{"three":"ktPTu","../PaintUtils":"g9Da6","../SkeletonPainter":"8QOrm","./BodyParts":"9fyKh","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","../ThresholdDefinitions":"ekYz4"}],"ktPTu":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2023 Three.js Authors
@@ -31583,64 +31631,265 @@ if (typeof window !== "undefined") {
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"g9Da6":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "JOINT_COLORS", ()=>JOINT_COLORS);
 parcelHelpers.export(exports, "getJointColor", ()=>getJointColor);
-parcelHelpers.export(exports, "getDifferenceLevel", ()=>getDifferenceLevel);
 parcelHelpers.export(exports, "getBoneColor", ()=>getBoneColor);
-parcelHelpers.export(exports, "DifferenceLevel", ()=>DifferenceLevel);
-const getJointColor = (delta)=>{
-    const differenceLevel = getDifferenceLevel(delta);
-    return getBoneColor(differenceLevel, differenceLevel);
-};
-const getDifferenceLevel = (delta)=>{
-    if (delta < 1) return DifferenceLevel.NONE;
-    if (delta < 2) return DifferenceLevel.MINOR;
-    if (delta < 4) return DifferenceLevel.MEDIUM;
-    if (delta < 6) return DifferenceLevel.MAJOR;
-    return DifferenceLevel.ABSOLUTE;
-};
-const colors = [
-    0x00BC13,
-    0x94BD00,
-    0xE7D407,
-    0xE89907,
-    0xFFEA00,
-    0xDB2800,
-    0x5C0000,
-    0x000000
+var _three = require("three");
+var _thresholdDefinitions = require("./ThresholdDefinitions");
+const BONE_COLORS = [
+    new (0, _three.Color)(0x3dab1b),
+    new (0, _three.Color)(0x7dab1b),
+    new (0, _three.Color)(0x85ab1b),
+    new (0, _three.Color)(0xa1ab1b),
+    new (0, _three.Color)(0xab981b),
+    new (0, _three.Color)(0xab791b),
+    new (0, _three.Color)(0xb00505),
+    new (0, _three.Color)(0x660000),
+    new (0, _three.Color)(0x000000)
 ];
-const getBoneColor = (delta1, delta2)=>{
-    const jointDiffLevel1 = getDifferenceLevel(delta1);
-    const jointDiffLevel2 = getDifferenceLevel(delta2);
-    const diffLevel = jointDiffLevel1 + jointDiffLevel2;
-    switch(diffLevel){
-        case 0:
-            return 0x3dab1b;
-        case 1:
-            return 0x7dab1b;
-        case 2:
-            return 0x85ab1b;
-        case 3:
-            return 0xa1ab1b;
-        case 4:
-            return 0xab981b;
-        case 5:
-            return 0xab791b;
-        case 6:
-            return 0xab2c1b;
-        case 7:
-            return 0xb00505;
-        default:
-            return 0x000000;
-    }
+const JOINT_COLORS = [
+    new (0, _three.Color)(0x3dab1b),
+    new (0, _three.Color)(0x85ab1b),
+    new (0, _three.Color)(0xab981b),
+    new (0, _three.Color)(0xb00505),
+    new (0, _three.Color)(0x000000)
+];
+const getJointColor = (delta, jointIndex)=>{
+    const severity = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS)[jointIndex].getSeverity(delta);
+    return JOINT_COLORS[severity];
 };
-let DifferenceLevel;
-(function(DifferenceLevel) {
-    DifferenceLevel[DifferenceLevel["NONE"] = 0] = "NONE";
-    DifferenceLevel[DifferenceLevel["MINOR"] = 1] = "MINOR";
-    DifferenceLevel[DifferenceLevel["MEDIUM"] = 2] = "MEDIUM";
-    DifferenceLevel[DifferenceLevel["MAJOR"] = 3] = "MAJOR";
-    DifferenceLevel[DifferenceLevel["ABSOLUTE"] = 4] = "ABSOLUTE";
-})(DifferenceLevel || (DifferenceLevel = {}));
+const getBoneColor = (delta1, jointIndex1, delta2, jointIndex2)=>{
+    const jointDiffLevel1 = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS)[jointIndex1].getSeverity(delta1);
+    const jointDiffLevel2 = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS)[jointIndex2].getSeverity(delta2);
+    const diffLevel = jointDiffLevel1 + jointDiffLevel2;
+    return BONE_COLORS[diffLevel];
+};
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","three":"ktPTu","./ThresholdDefinitions":"ekYz4"}],"ekYz4":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "THRESHOLD_DEFINITIONS", ()=>THRESHOLD_DEFINITIONS);
+var _jointThresholdSettings = require("./Entities/JointThresholdSettings");
+const THRESHOLD_DEFINITIONS = [
+    new (0, _jointThresholdSettings.JointThresholdSettings)(0, {
+        none: 1,
+        minor: 1,
+        medium: 1,
+        major: 1
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(1, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 2.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(2, {
+        none: 1.5,
+        minor: 3,
+        medium: 4.5,
+        major: 6
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(3, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(4, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(5, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(6, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 2.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(7, {
+        none: 1.5,
+        minor: 3,
+        medium: 4.5,
+        major: 6
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(8, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(9, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(10, {
+        none: 2,
+        minor: 4,
+        medium: 6,
+        major: 8
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(11, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 2.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(12, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 2.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(13, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 2.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(14, {
+        none: 1,
+        minor: 1.5,
+        medium: 2.5,
+        major: 3
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(15, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 3
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(16, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 3
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(17, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 3
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(18, {
+        none: 1,
+        minor: 2,
+        medium: 3,
+        major: 4
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(19, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(20, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(21, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(22, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(23, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(24, {
+        none: 1,
+        minor: 1.5,
+        medium: 2,
+        major: 3
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(25, {
+        none: 1,
+        minor: 2,
+        medium: 3,
+        major: 4
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(26, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(27, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(28, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(29, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    }),
+    new (0, _jointThresholdSettings.JointThresholdSettings)(30, {
+        none: 1.5,
+        minor: 2.5,
+        medium: 3.5,
+        major: 4.5
+    })
+];
+
+},{"./Entities/JointThresholdSettings":"76ATL","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"76ATL":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "JointThresholdSettings", ()=>JointThresholdSettings);
+parcelHelpers.export(exports, "Severity", ()=>Severity);
+class JointThresholdSettings {
+    constructor(jointIndex, tresholds){
+        this.jointIndex = jointIndex;
+        this.tresholds = tresholds;
+        this.modifier = 1;
+    }
+    getSeverity(distance) {
+        if (distance < this.tresholds.none * this.modifier) return Severity.NONE;
+        if (distance < this.tresholds.minor * this.modifier) return Severity.MINOR;
+        if (distance < this.tresholds.medium * this.modifier) return Severity.MEDIUM;
+        if (distance < this.tresholds.major * this.modifier) return Severity.MAJOR;
+        return Severity.ABSOLUTE;
+    }
+    updateThreshold(modifier) {
+        this.modifier += modifier;
+        this.modifier = Math.max(0, this.modifier);
+    }
+}
+let Severity;
+(function(Severity) {
+    Severity[Severity["NONE"] = 0] = "NONE";
+    Severity[Severity["MINOR"] = 1] = "MINOR";
+    Severity[Severity["MEDIUM"] = 2] = "MEDIUM";
+    Severity[Severity["MAJOR"] = 3] = "MAJOR";
+    Severity[Severity["ABSOLUTE"] = 4] = "ABSOLUTE";
+})(Severity || (Severity = {}));
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"8QOrm":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
@@ -31648,6 +31897,41 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "SkeletonPainter", ()=>SkeletonPainter);
 var _three = require("three");
 class SkeletonPainter {
+    static BONE_RADIUS = 0.25;
+    static BONE_TUBULAR_SEGMENTS = 1;
+    static BONE_RADIAL_SEGMENTS = 4;
+    static JOINT_RADIUS = 0.4;
+    static JOINT_HEIGHT_SEGMENTS = 10;
+    static JOINT_WIDTH_SEGMENTS = 10;
+    static JOINT_MENTOR_MATERIAL = {
+        color: 0x7952b3
+    };
+    static JOINT_THRESHOLD_MATERIALS = [
+        {
+            severity: "none",
+            color: 0x3dab1b,
+            transparent: true
+        },
+        {
+            severity: "minor",
+            color: 0x85ab1b,
+            transparent: true
+        },
+        {
+            severity: "medium",
+            color: 0xab981b,
+            transparent: true
+        },
+        {
+            severity: "major",
+            color: 0xb00505,
+            transparent: true
+        }
+    ];
+    static JOINT_THRESHOLD_LOW_MATERIAL = {
+        color: 0x3dab1b,
+        transparent: true
+    };
     static createBones = (coordinates)=>{
         const lines = [];
         for(let i = 0; i < coordinates.length - 1; i++)lines.push(this.makeBone(coordinates[i], coordinates[i + 1]));
@@ -31661,7 +31945,7 @@ class SkeletonPainter {
     static makeBone = (pointA, pointB)=>{
         const path = new (0, _three.LineCurve3)(pointA, pointB);
         //@ts-ignore
-        const geometry = new (0, _three.TubeGeometry)(path, 1, 0.2, 4, false); // TODO: fine tune params
+        const geometry = new (0, _three.TubeGeometry)(path, this.BONE_TUBULAR_SEGMENTS, this.BONE_RADIUS, this.BONE_RADIAL_SEGMENTS, false);
         const material = new (0, _three.MeshBasicMaterial)({
             color: 0x000000,
             side: (0, _three.DoubleSide)
@@ -31669,15 +31953,29 @@ class SkeletonPainter {
         return new (0, _three.Mesh)(geometry, material);
     };
     static makeJoint = (center)=>{
-        const geometry = new (0, _three.SphereGeometry)(0.3, 10, 10);
-        const material = new (0, _three.MeshBasicMaterial)({
-            color: 0xf0f000
-        });
+        const geometry = new (0, _three.SphereGeometry)(this.JOINT_RADIUS, this.JOINT_HEIGHT_SEGMENTS, this.JOINT_WIDTH_SEGMENTS);
+        const material = new (0, _three.MeshBasicMaterial)(this.JOINT_MENTOR_MATERIAL);
         const mesh = new (0, _three.Mesh)(geometry, material);
         //@ts-ignore
         mesh.position.set(center.x, center.y, center.z);
         return mesh;
     };
+    static createThresholdZones(center, thresholdSettings) {
+        const meshes = this.JOINT_THRESHOLD_MATERIALS.map((sphereMaterial)=>{
+            const geometry = new (0, _three.SphereGeometry)(thresholdSettings.tresholds[sphereMaterial.severity] * thresholdSettings.modifier, this.JOINT_HEIGHT_SEGMENTS + 10, this.JOINT_WIDTH_SEGMENTS + 10);
+            const materialProperties = {
+                color: sphereMaterial.color,
+                transparent: sphereMaterial.transparent
+            };
+            const material = new (0, _three.MeshBasicMaterial)(materialProperties);
+            material.opacity = 0.2;
+            const mesh = new (0, _three.Mesh)(geometry, material);
+            //@ts-ignore
+            mesh.position.set(center.x, center.y, center.z);
+            return mesh;
+        });
+        return meshes;
+    }
 }
 
 },{"three":"ktPTu","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"9fyKh":[function(require,module,exports) {
@@ -37528,10 +37826,14 @@ var _three = require("three");
 var _orbitControls = require("three/examples/jsm/controls/OrbitControls");
 var _animationSlider = require("./AnimationSlider");
 var _animationUtils = require("./AnimationUtils");
+var _applicationState = require("./Entities/ApplicationState");
+var _paintedSkeleton = require("./Entities/PaintedSkeleton");
 var _skeletonAction = require("./SkeletonAction");
+var _skeletonPainter = require("./SkeletonPainter");
+var _thresholdDefinitions = require("./ThresholdDefinitions");
 class CanvasScene {
     constructor(){
-        this.loading = true;
+        this.state = (0, _applicationState.ApplicationState).Loading;
         this.renderer = new (0, _three.WebGLRenderer)();
         const canvasContainer = document.getElementById("canvas-container");
         canvasContainer.appendChild(this.renderer.domElement);
@@ -37554,8 +37856,9 @@ class CanvasScene {
             this.camera.aspect = width / height;
         };
         window.addEventListener("resize", canvasResizer);
-        this.mentorShown = true;
+        this.mentorShown = false;
         this.mentorCentered = false;
+        this.normalizedLimbs = false;
     }
     addToScene(element) {
         this.scene.add(element);
@@ -37574,17 +37877,24 @@ class CanvasScene {
         (0, _animationUtils.initSettingsButtons)({
             ...this.skeletonAction.boundFunctions,
             switchMentor: this.switchMentor.bind(this),
-            centerMentor: this.centerMentor.bind(this)
+            centerMentor: this.switchCenterMentor.bind(this),
+            switchNormalizedLimbs: this.switchNormalizedLimbs.bind(this),
+            selectThresholdHandler: this.setThresholdFromSelect.bind(this),
+            selectTrackingHandler: this.setJointTrackingFromSelect.bind(this),
+            manipulateThreshlodModifier: this.modifyThresholdModifier.bind(this),
+            selectSpecificThreshlodHandler: this.modifyThresholdForSpecificJoint.bind(this)
         });
     }
     initAnimationControl() {
         this.animationSlider.animationControl = this.skeletonAction;
     }
     initSkeletons(pupil, mentor) {
+        this.mentor = mentor;
+        this.pupil = pupil;
         pupil.addToScene(this.scene);
-        mentor.addToScene(this.scene);
-        pupil.setTranslationOffset(new (0, _three.Vector3)(-10, 0, 0));
-        mentor.setTranslationOffset(new (0, _three.Vector3)(10, 0, 0));
+        // mentor.addToScene(this.scene);
+        // pupil.setTranslationOffset(new Vector3(-10, 0, 0));
+        // mentor.setTranslationOffset(new Vector3(10, 0, 0));
         this.skeletonAction.skeletons = [
             pupil,
             mentor
@@ -37603,34 +37913,115 @@ class CanvasScene {
     }
     switchMentor() {
         if (this.mentorShown) {
-            this.skeletonAction.skeletons[1].removeFromScene(this.scene);
-            if (!this.mentorCentered) this.skeletonAction.skeletons[0].setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+            this.mentor.removeFromScene(this.scene);
+            this.mentor.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+            this.pupil.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
         } else {
-            this.skeletonAction.skeletons[1].addToScene(this.scene);
-            this.skeletonAction.skeletons[0].setTranslationOffset(new (0, _three.Vector3)(10, 0, 0));
-            this.skeletonAction.skeletons[1].setTranslationOffset(new (0, _three.Vector3)(-10, 0, 0));
+            if (this.mentorCentered) {
+                this.mentor.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+                this.pupil.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+            } else {
+                this.mentor.setTranslationOffset(new (0, _three.Vector3)(10, 0, 0));
+                this.pupil.setTranslationOffset(new (0, _three.Vector3)(-10, 0, 0));
+            }
+            this.mentor.addToScene(this.scene);
         }
         this.mentorShown = !this.mentorShown;
     }
-    centerMentor() {
-        // return;
-        // TODO: implement this right
+    switchCenterMentor() {
         if (this.mentorCentered) {
-            this.skeletonAction.skeletons[0].setTranslationOffset(new (0, _three.Vector3)(10, 0, 0));
-            this.skeletonAction.skeletons[1].setTranslationOffset(new (0, _three.Vector3)(-10, 0, 0));
+            if (this.mentorShown) {
+                this.mentor.setTranslationOffset(new (0, _three.Vector3)(10, 0, 0));
+                this.pupil.setTranslationOffset(new (0, _three.Vector3)(-10, 0, 0));
+            }
         } else {
-            this.skeletonAction.skeletons[0].setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
-            this.skeletonAction.skeletons[1].setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+            this.mentor.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
+            this.pupil.setTranslationOffset(new (0, _three.Vector3)(0, 0, 0));
         }
         this.mentorCentered = !this.mentorCentered;
     }
     setLoaded() {
+        this.state = (0, _applicationState.ApplicationState).Loaded;
         const loadingOverlay = document.getElementById("loading-overlay");
         loadingOverlay.style.display = "none";
     }
+    setFailed() {
+        this.state = (0, _applicationState.ApplicationState).Failed;
+    }
+    switchNormalizedLimbs() {
+        if (!this.normalizedLimbs) this.pupil.skeleton.setDeltaListToNormalizedLimbs(this.mentor.skeleton);
+        else this.pupil.skeleton.setDeltaListToDefault();
+        this.normalizedLimbs = !this.normalizedLimbs;
+    }
+    setThresholdZone(jointIndex) {
+        if (this.mentor.thresholdSphereIndex) {
+            const zones = (0, _paintedSkeleton.PaintedSkeleton).thresholdZones[this.mentor.thresholdSphereIndex];
+            zones.map((zone)=>{
+                this.scene.remove(zone);
+            });
+        }
+        const zones = (0, _paintedSkeleton.PaintedSkeleton).thresholdZones[jointIndex];
+        const currentPose = this.mentor.skeleton.getPose(this.mentor.currentFrame);
+        const observedJoint = currentPose.getJointByIndex(jointIndex);
+        zones.map((zone)=>{
+            //@ts-ignore
+            zone.position.set(observedJoint.x, observedJoint.y, observedJoint.z);
+            this.scene.add(zone);
+        });
+        this.mentor.thresholdSphereIndex = jointIndex;
+    }
+    setThresholdFromSelect() {
+        //@ts-ignore
+        const selectedIndex = document.getElementById("joint-select-threshold").value;
+        if (selectedIndex === -1) this.mentor.thresholdSphereIndex = undefined;
+        else this.setThresholdZone(selectedIndex);
+    }
+    setJointTracking(jointIndex) {
+        const warpingPath = this.pupil.skeleton.warpingPaths[jointIndex];
+        this.skeletonAction.setJointTracking(warpingPath);
+    }
+    setJointTrackingFromSelect() {
+        //@ts-ignore
+        const selectedIndex = document.getElementById("joint-select-tracking").value;
+        if (selectedIndex === -1) this.skeletonAction.setDefaultAnimation();
+        else this.setJointTracking(selectedIndex);
+    }
+    setThresholdModifier(modifier) {
+        (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS).map((threshold)=>{
+            threshold.updateThreshold(modifier);
+        });
+        console.log((0, _thresholdDefinitions.THRESHOLD_DEFINITIONS));
+        (0, _paintedSkeleton.PaintedSkeleton).thresholdZones = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS).map((thresholdSetting)=>{
+            const zone = (0, _skeletonPainter.SkeletonPainter).createThresholdZones(new (0, _three.Vector3)(0, 0, 0), thresholdSetting);
+            return zone;
+        });
+    }
+    modifyThresholdModifier(modifier) {
+        const zones = this.mentor.getShowedThresholdZones();
+        zones.map((zone)=>this.scene.remove(zone));
+        this.setThresholdModifier(modifier);
+        const newZones = this.mentor.getShowedThresholdZones();
+        this.mentor.updateThresholdZonesPosition(this.mentor.skeleton.getPose(this.mentor.getFrame()));
+        newZones.map((zone)=>this.scene.add(zone));
+    }
+    modifyThresholdForSpecificJoint(modifier) {
+        //@ts-ignore
+        const selectedIndex = document.getElementById("joint-select-specific-tracking").value;
+        if (selectedIndex === -1) return;
+        const oldZones = (0, _paintedSkeleton.PaintedSkeleton).thresholdZones[selectedIndex];
+        const thresholdSettings = (0, _thresholdDefinitions.THRESHOLD_DEFINITIONS)[selectedIndex];
+        thresholdSettings.updateThreshold(modifier);
+        const newZones = (0, _skeletonPainter.SkeletonPainter).createThresholdZones(new (0, _three.Vector3)(0, 0, 0), thresholdSettings);
+        (0, _paintedSkeleton.PaintedSkeleton).thresholdZones[selectedIndex] = newZones;
+        if (selectedIndex === this.mentor.thresholdSphereIndex) {
+            oldZones.map((zone)=>this.scene.remove(zone));
+            this.mentor.updateThresholdZonesPosition(this.mentor.skeleton.getPose(this.mentor.getFrame()));
+            newZones.map((zone)=>this.scene.add(zone));
+        }
+    }
 }
 
-},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls":"7mqRv","./AnimationSlider":"jrRV5","./AnimationUtils":"azAHf","./SkeletonAction":"hnjla","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"7mqRv":[function(require,module,exports) {
+},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls":"7mqRv","./AnimationSlider":"jrRV5","./AnimationUtils":"azAHf","./Entities/ApplicationState":"bsEOP","./Entities/PaintedSkeleton":"dYJ2X","./SkeletonAction":"hnjla","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./SkeletonPainter":"8QOrm","./ThresholdDefinitions":"ekYz4"}],"7mqRv":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "OrbitControls", ()=>OrbitControls);
@@ -38446,27 +38837,29 @@ const initSettingsButtons = (animationControlFunctions)=>{
     window.addEventListener("animation-end", (e)=>setPlayButtonStart(e));
     const speedModifiers = [
         0.5,
-        1,
-        1.5,
-        2
+        1
     ];
     playButton.onclick = animationControlFunctions.pause;
     document.getElementById("mentor-switch").addEventListener("click", animationControlFunctions.switchMentor);
     document.getElementById("mentor-switch-centered").addEventListener("click", animationControlFunctions.centerMentor);
+    document.getElementById("normalize-limbs-switch").addEventListener("click", animationControlFunctions.switchNormalizedLimbs);
+    document.getElementById("joint-select-threshold").addEventListener("change", animationControlFunctions.selectThresholdHandler);
+    document.getElementById("joint-select-tracking").addEventListener("change", animationControlFunctions.selectTrackingHandler);
+    document.getElementById("threshold-decrease").addEventListener("click", ()=>animationControlFunctions.manipulateThreshlodModifier(-0.25));
+    document.getElementById("threshold-increase").addEventListener("click", ()=>animationControlFunctions.manipulateThreshlodModifier(0.25));
+    document.getElementById("threshold-specific-decrease").addEventListener("click", ()=>animationControlFunctions.selectSpecificThreshlodHandler(-0.25));
+    document.getElementById("threshold-specific-increase").addEventListener("click", ()=>animationControlFunctions.selectSpecificThreshlodHandler(0.25));
     speedModifiers.map((speed)=>{
         const btn = document.getElementById(`speed-${speed.toString()}-btn`);
         btn.onclick = (e)=>animationControlFunctions.speed(speed);
     });
 };
 const setPlayButtonStart = (e)=>{
-    console.log("I activated stop");
     const btn = document.getElementById("play-pause-btn");
     btn.src = "/play-solid.fd55628a.svg";
-    e.detail.setFrame(0);
-    btn.onclick = e.detail.play;
+    btn.onclick = e.detail.playFromStart;
 };
 const setPauseButton = (e)=>{
-    console.log("I activated play");
     const btn = document.getElementById("play-pause-btn");
     btn.src = "/pause-solid.e0260729.svg";
     btn.onclick = e.detail.pause;
@@ -38478,11 +38871,23 @@ const setPlayButton = (e)=>{
     btn.onclick = e.detail.play;
 };
 
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"bsEOP":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "ApplicationState", ()=>ApplicationState);
+let ApplicationState;
+(function(ApplicationState) {
+    ApplicationState[ApplicationState["Loading"] = 0] = "Loading";
+    ApplicationState[ApplicationState["Loaded"] = 1] = "Loaded";
+    ApplicationState[ApplicationState["Failed"] = 2] = "Failed";
+})(ApplicationState || (ApplicationState = {}));
+
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"hnjla":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "SkeletonAction", ()=>SkeletonAction);
 var _three = require("three");
+var _dtwcalculator = require("./DTWCalculator");
 const clock = new (0, _three.Clock)();
 class SkeletonAction {
     constructor(camera, scene, renderer, progressionBar, fps = 60){
@@ -38498,15 +38903,21 @@ class SkeletonAction {
         this.currentFrame = 0;
         this.boundFunctions = {
             play: this.start.bind(this),
+            playFromStart: this.startFromBeginning.bind(this),
             speed: this.setSpeed.bind(this),
             pause: this.stop.bind(this),
             setFrame: this.setFrame.bind(this)
         };
         this.playing = false;
+        this.jointFrames = [];
+        this.tickFunction = this.tick.bind(this);
         window.addEventListener("keydown", this.handleSpacebar.bind(this));
     }
     startFromBeginning() {
-        this.setFrame(0);
+        this.skeletons.map((skeleton)=>{
+            skeleton.setToFrame(0);
+        });
+        this.currentFrame = 0;
         this.start();
     }
     addSkeleton(skeleton) {
@@ -38532,7 +38943,7 @@ class SkeletonAction {
         this.renderer.setAnimationLoop(()=>{
             this.delta += clock.getDelta();
             if (this.delta > this.interval) {
-                if (this.tick()) {
+                if (this.tickFunction()) {
                     this.stop();
                     const ev = new CustomEvent("animation-end", {
                         detail: this.boundFunctions
@@ -38550,6 +38961,7 @@ class SkeletonAction {
         });
         this.playing = false;
         dispatchEvent(ev);
+        console.log(this.currentFrame);
         this.renderer.setAnimationLoop(()=>{
             this.renderer.render(this.scene, this.camera);
         });
@@ -38561,9 +38973,25 @@ class SkeletonAction {
         this.renderer.render(this.scene, this.camera);
         return this.skeletons.every((skeleton)=>skeleton.maxFrame <= this.currentFrame);
     }
+    tickJointTracker() {
+        const pupil = this.skeletons[0];
+        pupil.setToFrame(this.currentFrame);
+        this.skeletons[1].setToFrame(this.jointFrames[this.currentFrame]);
+        this.currentFrame += 1;
+        this.progressionBar?.animateSlider(this.skeletons[0].getFrame());
+        this.renderer.render(this.scene, this.camera);
+        return pupil.maxFrame <= this.currentFrame;
+    }
     setSpeed(modifier) {
         this.interval = this.interval * this.speedModifier / modifier;
         this.speedModifier = modifier;
+    }
+    setJointTracking(warpingPath) {
+        this.jointFrames = (0, _dtwcalculator.getJointFrameTracking)(warpingPath);
+        this.tickFunction = this.tickJointTracker.bind(this);
+    }
+    setDefaultAnimation() {
+        this.tickFunction = this.tick.bind(this);
     }
     handleSpacebar(e) {
         if (e.key == " " || e.code == "Space" || e.keyCode == 32) {
@@ -38573,7 +39001,7 @@ class SkeletonAction {
     }
 }
 
-},{"three":"ktPTu","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"cx9Cm":[function(require,module,exports) {
+},{"three":"ktPTu","./DTWCalculator":"dogso","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"cx9Cm":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "SkeletonLoader", ()=>SkeletonLoader);
@@ -38590,8 +39018,8 @@ class SkeletonLoader {
     }
     async createPaintedSkeleton() {
         const poses = await this.loadPoses();
-        const mentorSkeleton = new (0, _skeleton.Skeleton)(poses[0]);
-        const pupilSkeleton = new (0, _skeleton.Skeleton)(poses[1]);
+        const mentorSkeleton = new (0, _skeleton.Skeleton)(poses[0], false);
+        const pupilSkeleton = new (0, _skeleton.Skeleton)(poses[1], true);
         pupilSkeleton.calculateDeltaFromMentor(mentorSkeleton);
         const mentor = new (0, _paintedSkeleton.PaintedSkeleton)(mentorSkeleton);
         const pupil = new (0, _paintedSkeleton.PaintedSkeleton)(pupilSkeleton);
@@ -38959,30 +39387,29 @@ class Pose {
     }
     normalizeLimb(bodyPart, pose) {
         const indices = pose.getJointsIndices(bodyPart);
-        let rootJointIndex;
-        switch(bodyPart){
-            case (0, _bodyParts.BodyParts).LeftLeg:
-            case (0, _bodyParts.BodyParts).RightLeg:
-                rootJointIndex = Pose.ROOT_INDEX;
-                break;
-            case (0, _bodyParts.BodyParts).LeftArm:
-            case (0, _bodyParts.BodyParts).RightArm:
-            case (0, _bodyParts.BodyParts).Torso:
-            case (0, _bodyParts.BodyParts).Head:
-                rootJointIndex = Pose.THORAX_INDEX;
-                break;
-            case (0, _bodyParts.BodyParts).LeftThumb:
-                rootJointIndex = Pose.LHAND_INDEX;
-                break;
-            case (0, _bodyParts.BodyParts).RightThumb:
-                rootJointIndex = Pose.RHAND_INDEX;
-                break;
-        }
+        let rootJointIndex = indices[0];
+        // switch(bodyPart) {
+        //   case BodyParts.LeftLeg:
+        //   case BodyParts.RightLeg:
+        //     rootJointIndex = Pose.ROOT_INDEX;
+        //     break;
+        //   case BodyParts.LeftArm:
+        //   case BodyParts.RightArm:
+        //   case BodyParts.Torso:
+        //   case BodyParts.Head:
+        //     rootJointIndex = Pose.THORAX_INDEX;
+        //     break;
+        //   case BodyParts.LeftThumb:
+        //     rootJointIndex = Pose.LHAND_INDEX;
+        //     break;
+        //   case BodyParts.RightThumb:
+        //     rootJointIndex = Pose.RHAND_INDEX;
+        //     break;
+        // }
         const offset = pose.getJointCoordinate(rootJointIndex);
         indices.map((index)=>{
             const current = pose.getJointCoordinate(index);
-            current.addScaledVector(offset, -1);
-            pose.setJointCoordinate(index, current);
+            pose.setJointCoordinate(index, new (0, _three.Vector3)(current.x - offset.x, current.y - offset.y, current.z - offset.z));
         });
     }
     getJointCoordinate(jointIndex) {

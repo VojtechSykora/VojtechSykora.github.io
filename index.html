@@ -9,6 +9,42 @@
 </head>
 
 <body id="body">
+  <div class="legend-container">
+    <div class="accordion" id="legend-accordion">
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+            Legenda
+          </button>
+        </h2>
+        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#legend-accordion">
+          <div class="accordion-body">
+            <div class="legend-item">
+              <div class="legend-color color-diff-none"></div>
+              <div class="legend-label">Minimální rozdíl</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color color-diff-minor"></div>
+              <div class="legend-label">Malý rozdíl</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color color-diff-medium"></div>
+              <div class="legend-label">Střední rozdíl</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color color-diff-major"></div>
+              <div class="legend-label">Velký rozdíl</div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-color color-diff-extreme"></div>
+              <div class="legend-label">Extrémní rozdíl</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
   <div id="loading-overlay" class="loading-overlay">
     <div class="spinner-border text-primary loading-spinner" role="status">
       <span class="sr-only"></span>
@@ -29,10 +65,11 @@
 
     <div class="animation-modifiers d-flex flex-row align-items-center">
       <img id="play-pause-btn" src="/pause-solid.e0260729.svg" class="animation-controls__icon" alt="play/pause">
+      <img id="play-pause-btn" src="/play-solid.fd55628a.svg" class="animation-controls__icon" alt="play/pause" style="display: none">
       <div id="speed-0.5-btn" class="animation-controls__text">0.5x</div>
       <div id="speed-1-btn" class="animation-controls__text">1x</div>
-      <div id="speed-1.5-btn" class="animation-controls__text">1.5x</div>
-      <div id="speed-2-btn" class="animation-controls__text">2x</div>
+      <!-- <div id="speed-1.5-btn" class="animation-controls__text">1.5x</div>
+      <div id="speed-2-btn" class="animation-controls__text">2x</div> -->
       <img id="settings-btn" src="/gear-solid.12ceeb22.svg" class="animation-controls__icon icon-right" alt="settings">
     </div>      
   </div>
@@ -66,6 +103,163 @@
         </div>
       </div>
     </div>
+
+    <div class="option">
+      <div class="option-description">
+        Normalizovat všechny končetiny
+      </div>
+
+      <div class="option-toggles">
+        <div class="form-check form-switch">
+          <input class="form-check-input settings-switch" type="checkbox" role="switch" id="normalize-limbs-switch">
+        </div>
+      </div>
+    </div>
+    <div class="option">
+      <div class="option-description">
+        Zobrazenit hranice rozdílnosti pro kloub
+      </div>
+
+      <div class="option-toggles">
+        <select class="joint-select" name="jointSelectZones" id="joint-select-threshold">
+          <option value="-1">Žádný</option>
+          <option value="0">Střed</option>
+          <option value="1">Levá kyčel</option>
+          <option value="2">Levé koleno</option>
+          <option value="3">Levý kotník</option>
+          <option value="4">Levá šlapka</option>
+          <option value="5">L. prsty u nohou</option>
+          <option value="6">Pravá kyčel</option>
+          <option value="7">Pravé koleno</option>
+          <option value="8">Pravý kotník</option>
+          <option value="9">Pravá šlapka</option>
+          <option value="10">P. prsty u nohou</option>
+          <option value="11">Bedra</option>
+          <option value="12">Břicho</option>
+          <option value="13">Hruď</option>
+          <option value="14">Pod krkem</option>
+          <option value="15">Nad krkem</option>
+          <option value="16">Hlava</option>
+          <option value="17">Levé rameno</option>
+          <option value="18">Levý loket</option>
+          <option value="19">Levé předloktí</option>
+          <option value="20">Levé zápěstí</option>
+          <option value="21">Levá dlaň</option>
+          <option value="22">Levé prsty</option>
+          <option value="23">L. palec na ruce</option>
+          <option value="24">Pravé rameno</option>
+          <option value="25">Pravý loket</option>
+          <option value="26">Pravé předloktí</option>
+          <option value="27">Pravé zápěstí</option>
+          <option value="28">Pravá dlaň</option>
+          <option value="29">Pravé prsty</option>
+          <option value="30">P. palec na ruce</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="option">
+      <div class="option-description">
+        Animovat podle mapování kloubu
+      </div>
+
+      <div class="option-toggles">
+        <select class="joint-select" name="jointSelectTracking" id="joint-select-tracking">
+          <option value="-1">Žádný</option>
+          <option value="0">Střed</option>
+          <option value="1">Levá kyčel</option>
+          <option value="2">Levé koleno</option>
+          <option value="3">Levý kotník</option>
+          <option value="4">Levá šlapka</option>
+          <option value="5">L. prsty u nohou</option>
+          <option value="6">Pravá kyčel</option>
+          <option value="7">Pravé koleno</option>
+          <option value="8">Pravý kotník</option>
+          <option value="9">Pravá šlapka</option>
+          <option value="10">P. prsty u nohou</option>
+          <option value="11">Bedra</option>
+          <option value="12">Břicho</option>
+          <option value="13">Hruď</option>
+          <option value="14">Krk</option>
+          <option value="15">Hlava</option>
+          <option value="16">Čelo</option>
+          <option value="17">Levé rameno</option>
+          <option value="18">Levý loket</option>
+          <option value="19">Levé předloktí</option>
+          <option value="20">Levé zápěstí</option>
+          <option value="21">Levá dlaň</option>
+          <option value="22">Levé prsty</option>
+          <option value="23">L. palec na ruce</option>
+          <option value="24">Pravé rameno</option>
+          <option value="25">Pravý loket</option>
+          <option value="26">Pravé předloktí</option>
+          <option value="27">Pravé zápěstí</option>
+          <option value="28">Pravá dlaň</option>
+          <option value="29">Pravé prsty</option>
+          <option value="30">P. palec na ruce</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="option">
+      <div class="option-description">
+        Nastavit citlivost pro specifický kloub
+      </div>
+
+      <div class="option-toggles">
+        <select class="joint-select" name="jointSelectSpecificTracking" id="joint-select-specific-tracking">
+          <option value="-1">Žádný</option>
+          <option value="0">Střed</option>
+          <option value="1">Levá kyčel</option>
+          <option value="2">Levé koleno</option>
+          <option value="3">Levý kotník</option>
+          <option value="4">Levá šlapka</option>
+          <option value="5">L. prsty u nohou</option>
+          <option value="6">Pravá kyčel</option>
+          <option value="7">Pravé koleno</option>
+          <option value="8">Pravý kotník</option>
+          <option value="9">Pravá šlapka</option>
+          <option value="10">P. prsty u nohou</option>
+          <option value="11">Bedra</option>
+          <option value="12">Břicho</option>
+          <option value="13">Hruď</option>
+          <option value="14">Krk</option>
+          <option value="15">Hlava</option>
+          <option value="16">Čelo</option>
+          <option value="17">Levé rameno</option>
+          <option value="18">Levý loket</option>
+          <option value="19">Levé předloktí</option>
+          <option value="20">Levé zápěstí</option>
+          <option value="21">Levá dlaň</option>
+          <option value="22">Levé prsty</option>
+          <option value="23">L. palec na ruce</option>
+          <option value="24">Pravé rameno</option>
+          <option value="25">Pravý loket</option>
+          <option value="26">Pravé předloktí</option>
+          <option value="27">Pravé zápěstí</option>
+          <option value="28">Pravá dlaň</option>
+          <option value="29">Pravé prsty</option>
+          <option value="30">P. palec na ruce</option>
+        </select>
+
+        <button type="button" id="threshold-specific-decrease" class="btn btn-secondary"> - </button>
+        <button type="button" id="threshold-specific-increase" class="btn btn-primary"> + </button>  
+
+      </div>
+    </div>
+
+    <div class="option">
+      <div class="option-description">
+        Nastavit citlivost pro rozdílnost všech kloubů
+      </div>
+
+      <div class="option-toggles">
+        <button type="button" id="threshold-decrease" class="btn btn-secondary"> - </button>
+        <button type="button" id="threshold-increase" class="btn btn-primary"> + </button>  
+      </div>
+    </div>
+
+
    </div>
   </div>
 
