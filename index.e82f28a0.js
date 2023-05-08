@@ -31947,7 +31947,7 @@ class SkeletonPainter {
         //@ts-ignore
         const geometry = new (0, _three.TubeGeometry)(path, this.BONE_TUBULAR_SEGMENTS, this.BONE_RADIUS, this.BONE_RADIAL_SEGMENTS, false);
         const material = new (0, _three.MeshBasicMaterial)({
-            color: 0x000000,
+            color: 0x7952b3,
             side: (0, _three.DoubleSide)
         });
         return new (0, _three.Mesh)(geometry, material);
