@@ -571,24 +571,24 @@ const dotsEffect = ()=>{
 const interval = setInterval(dotsEffect, 500);
 const canvasScene = new (0, _canvasScene.CanvasScene)();
 const loader = new (0, _skeletonLoader.SkeletonLoader)();
-const skeletons = loader.createPaintedSkeleton();
-skeletons.then((res)=>{
-    canvasScene.init(res[1], res[0]);
-    canvasScene.setLoaded();
-    clearInterval(interval);
-    canvasScene.start();
-}) // const skel1 = loader.loadDummyPose(seq6);
- // const skel2 = loader.loadDummyPose(seq7);
- // const mentorSkeleton = new Skeleton(skel2, false);
- // const pupilSkeleton = new Skeleton(skel1, true);
- // pupilSkeleton.calculateDeltaFromMentor(mentorSkeleton);
- // const mentor = new PaintedSkeleton(mentorSkeleton);
- // const pupil = new PaintedSkeleton(pupilSkeleton);
- // canvasScene.init(pupil, mentor)
- // canvasScene.setLoaded();
- // clearInterval(interval)
- // canvasScene.start();
-;
+// const skeletons = loader.createPaintedSkeleton();
+// skeletons.then(res => {
+//     canvasScene.init(res[1], res[0])
+//     canvasScene.setLoaded();
+//     clearInterval(interval)
+//     canvasScene.start();
+// })
+const skel1 = loader.loadDummyPose((0, _sequence.seq6));
+const skel2 = loader.loadDummyPose((0, _sequence.seq7));
+const mentorSkeleton = new (0, _skeleton.Skeleton)(skel2, false);
+const pupilSkeleton = new (0, _skeleton.Skeleton)(skel1, true);
+pupilSkeleton.calculateDeltaFromMentor(mentorSkeleton);
+const mentor = new (0, _paintedSkeleton.PaintedSkeleton)(mentorSkeleton);
+const pupil = new (0, _paintedSkeleton.PaintedSkeleton)(pupilSkeleton);
+canvasScene.init(pupil, mentor);
+canvasScene.setLoaded();
+clearInterval(interval);
+canvasScene.start();
 
 },{"./Entities/Skeleton":"hnq9c","./TestData/Sequence":"2fnPa","./Entities/PaintedSkeleton":"dYJ2X","bootstrap":"h36JB","./CanvasScene":"jN3M7","./SkeletonLoader":"cx9Cm"}],"hnq9c":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
