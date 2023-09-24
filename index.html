@@ -1,269 +1,99 @@
 <!DOCTYPE html>
-<html lang="cs">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="/index.044e704e.css">
-  <title>Visualize motion difference</title>
-</head>
-
-<body id="body">
-  <div class="legend-container">
-    <div class="accordion" id="legend-accordion">
-      <div class="accordion-item">
-        <h2 class="accordion-header">
-          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-            Legenda
-          </button>
-        </h2>
-        <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#legend-accordion">
-          <div class="accordion-body">
-            <div class="legend-item">
-              <div class="legend-color color-diff-none"></div>
-              <div class="legend-label">Minimální rozdíl</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color color-diff-minor"></div>
-              <div class="legend-label">Malý rozdíl</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color color-diff-medium"></div>
-              <div class="legend-label">Střední rozdíl</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color color-diff-major"></div>
-              <div class="legend-label">Velký rozdíl</div>
-            </div>
-            <div class="legend-item">
-              <div class="legend-color color-diff-extreme"></div>
-              <div class="legend-label">Extrémní rozdíl</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-  <div id="loading-overlay" class="loading-overlay">
-    <div class="spinner-border text-primary loading-spinner" role="status">
-      <span class="sr-only"></span>
-    </div>
-    <div class="loading-text">Loading <div class="loading-dots" id="loading-dots"></div></div>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="./favicon.png" />
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+      	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm" crossorigin="anonymous"></script>
     
-    <script>
-</script>
-  </div>
-  <div class="canvas-container" id="canvas-container"></div>
 
-  <div class="container-fluid controls-overlay">
-    <div class="slider-container" id="slider-container">
-      <div class="slider" id="slider">
-        <div class="slider-control" id="slider-control"></div>
-      </div>
-    </div>
+     	<!-- fonts -->
+     	<link rel="preconnect" href="https://fonts.googleapis.com">
+     	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     	<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
-    <div class="animation-modifiers d-flex flex-row align-items-center">
-      <img id="play-pause-btn" src="/pause-solid.e0260729.svg" class="animation-controls__icon" alt="play/pause">
-      <img id="play-pause-btn" src="/play-solid.fd55628a.svg" class="animation-controls__icon" alt="play/pause" style="display: none">
-      <div id="speed-0.5-btn" class="animation-controls__text">0.5x</div>
-      <div id="speed-1-btn" class="animation-controls__text">1x</div>
-      <!-- <div id="speed-1.5-btn" class="animation-controls__text">1.5x</div>
-      <div id="speed-2-btn" class="animation-controls__text">2x</div> -->
-      <img id="settings-btn" src="/gear-solid.12ceeb22.svg" class="animation-controls__icon icon-right" alt="settings">
-    </div>      
-  </div>
+		<meta name="viewport" content="width=device-width" />
+		
+		<link href="./_app/immutable/assets/0.25d877d6.css" rel="stylesheet">
+		<link href="./_app/immutable/assets/5.7aa94b9c.css" rel="stylesheet">
+		<link href="./_app/immutable/assets/ContactUsButton.64e98908.css" rel="stylesheet">
+		<link rel="modulepreload" href="./_app/immutable/entry/start.f32c5b43.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/scheduler.929bc1c9.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/singletons.126da608.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.17cd615f.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.ee3cc335.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/0.60a3b449.js">
+		<link rel="modulepreload" href="./_app/immutable/nodes/5.af68865c.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/each.e59479a4.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/spread.8a54911c.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/ContactUsButton.be54a68a.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.17c2b585.js">
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">  <header class="container-fluid ml-0 mr-0 header header--desktop svelte-1ravloh" data-svelte-h="svelte-sjgw0y"><div class="row"><div class="col-md-1"></div> <div class="col-md-10 header__col d-flex flex-row align-items-center svelte-1ravloh"><div class="logo-container svelte-1ravloh"><a class="nav-link__logo svelte-1ravloh" href="/">LOGO</a></div> <div class="nav-link svelte-1ravloh"><a class="nav-link__anchor svelte-1ravloh" href="/lide.html">Lidé</a></div> <div class="nav-link svelte-1ravloh"><a class="nav-link__anchor svelte-1ravloh" href="/program.html">Program</a></div> <div class="nav-link svelte-1ravloh"><a class="nav-link__anchor svelte-1ravloh" href="/kontakt.html">Kontakt</a></div> <div class="nav-link svelte-1ravloh"><a class="nav-link__anchor svelte-1ravloh" href="/akce.html">Akce</a></div></div> <div class="col-md-1"></div></div></header> <header class="container-fluid ml-0 mr-0 header header--mobile svelte-1ravloh"><div class="row"><div class="col-md-1"></div> <div class="col-md-10 header__col d-flex flex-row  svelte-1ravloh"><div class="logo-container svelte-1ravloh" data-svelte-h="svelte-11nmi8t"><a class="nav-link__logo svelte-1ravloh" href="/">LOGO</a></div> <img class="menu-icon svelte-1ravloh" src="/bars-solid.svg" alt="menu"></div> <div class="col-md-1"></div></div> <div id="mobile-menu" class="row header-mobile-menu hidden svelte-1ravloh"><div class="col-md-1"></div> <div class="col-md-10 mobile-menu-optionns d-flex flex-column svelte-1ravloh"><div class="nav-link--mobile svelte-1ravloh"><a class="nav-link__anchor--mobile svelte-1ravloh" href="/lide" data-svelte-h="svelte-166ijho">Lidé</a></div> <div class="nav-link--mobile svelte-1ravloh"><a class="nav-link__anchor--mobile svelte-1ravloh" href="/program" data-svelte-h="svelte-d0h128">Program</a></div> <div class="nav-link--mobile svelte-1ravloh"><a class="nav-link__anchor--mobile svelte-1ravloh" href="/kontakt.html" data-svelte-h="svelte-102sowb">Kontakt</a></div> <div class="nav-link--mobile svelte-1ravloh"><a class="nav-link__anchor--mobile svelte-1ravloh" href="/akce" data-svelte-h="svelte-1wkjgxc">Akce</a></div></div> <div class="col-md-1"></div></div></header> <div class="landing-image-container svelte-1vlcayg" data-svelte-h="svelte-rycn36"><div class="landing-card-container svelte-1vlcayg"><div class="landing-card svelte-1vlcayg"><div class="landing-card__title svelte-1vlcayg">Volím SPOLEČNĚ</div> <div class="landing-card__bottom svelte-1vlcayg">Společně pro lepší Jehnice</div></div></div> <div class="landing-card-container--mobile svelte-1vlcayg"><div class="landing-card--mobile svelte-1vlcayg"><div class="landing-card__title--mobile svelte-1vlcayg">Volím SPOLEČNĚ</div> <div class="landing-card__bottom--mobile svelte-1vlcayg">Společně pro lepší Jehnice</div></div></div> </div> <div class="container-fluid pt-4"><div class="row" data-svelte-h="svelte-1xvs5re"><div class="col-md-3"></div> <div class="col-md-6 proclaimer-text svelte-1dg5kgu">Jsme sdruzeni spolecne v jehnicich a toto je nas kratky popisek</div> <div class="col-md-3"></div></div> <div class="row" data-svelte-h="svelte-1g1i33f"><div class="col-md-2"></div> <div class="col-md-8 separator svelte-1wkr8tb"></div> <div class="col-md-2"></div> </div></div> <div class="container-fluid"><div class="row" data-svelte-h="svelte-segegm"><div class="col-md-3"></div> <div class="col-md-6 proclaimer-text section-header svelte-1dg5kgu">NAŠI KANDIDÁTI</div> <div class="col-md-3"></div></div> <div class="row"><div class="col-md-1"></div> <div class="candidate-card col-md-2 hidden svelte-1drlzjx"><div><img class="candidate-card__photo svelte-1drlzjx" src="/Sample_User_Icon.png" alt="Ing. Robert Charvát"></div> <a class="candidate-card__name svelte-1drlzjx" href="/lide/detail/charvat.html">Ing. Robert Charvát</a> <div class="candidate-card__description"></div> </div><div class="candidate-card col-md-2 hidden svelte-1drlzjx"><div><img class="candidate-card__photo svelte-1drlzjx" src="/Sample_User_Icon.png" alt="Mgr. Pavel Svirák"></div> <a class="candidate-card__name svelte-1drlzjx" href="/lide/detail/svirak.html">Mgr. Pavel Svirák</a> <div class="candidate-card__description"></div> </div><div class="candidate-card col-md-2 hidden svelte-1drlzjx"><div><img class="candidate-card__photo svelte-1drlzjx" src="/Sample_User_Icon.png" alt="Bc. Vojtěch Sýkora"></div> <a class="candidate-card__name svelte-1drlzjx" href="/lide/detail/sykora.html">Bc. Vojtěch Sýkora</a> <div class="candidate-card__description"></div> </div><div class="candidate-card col-md-2 hidden svelte-1drlzjx"><div><img class="candidate-card__photo svelte-1drlzjx" src="/Sample_User_Icon.png" alt="Iveta Brůhová"></div> <a class="candidate-card__name svelte-1drlzjx" href="/lide/detail/bruhova.html">Iveta Brůhová</a> <div class="candidate-card__description"></div> </div><div class="candidate-card col-md-2 hidden svelte-1drlzjx"><div><img class="candidate-card__photo svelte-1drlzjx" src="/Sample_User_Icon.png" alt="Bc. Michal Ekl"></div> <a class="candidate-card__name svelte-1drlzjx" href="/lide/detail/ekl.html">Bc. Michal Ekl</a> <div class="candidate-card__description"></div> </div> <div class="col-md-1"></div></div> <div class="d-flex align-items-center justify-content-center mt-4" data-svelte-h="svelte-1802cut"><a class="btn-more svelte-1dg5kgu" href="/lide.html">Všichni kandidáti</a></div> <div class="row" data-svelte-h="svelte-1g1i33f"><div class="col-md-2"></div> <div class="col-md-8 separator svelte-1wkr8tb"></div> <div class="col-md-2"></div> </div></div> <div class="container-fluid"><div class="row" data-svelte-h="svelte-u5jcnz"><div class="col-md-3"></div> <div class="col-md-6 proclaimer-text section-header svelte-1dg5kgu">NÁŠ PLÁN</div> <div class="col-md-3"></div></div> <div class="row"><div class="col-md-2"></div> <div class="col-md-2"><a class="btn-plan svelte-1dg5kgu" href="/program/detail/vize.html">Vize</a> </div><div class="col-md-2"><a class="btn-plan svelte-1dg5kgu" href="/program/detail/komunikace.html">Komunikace</a> </div><div class="col-md-2"><a class="btn-plan svelte-1dg5kgu" href="/program/detail/kultura.html">Kultura</a> </div><div class="col-md-2"><a class="btn-plan svelte-1dg5kgu" href="/program/detail/rozvoj.html">Rozvoj</a> </div> <div class="col-md-2"></div></div> <div class="d-flex align-items-center justify-content-center mt-4" data-svelte-h="svelte-93ntr6"><a href="program" class="btn-more svelte-1dg5kgu">Kompletní program</a></div> <div class="row" data-svelte-h="svelte-1g1i33f"><div class="col-md-2"></div> <div class="col-md-8 separator svelte-1wkr8tb"></div> <div class="col-md-2"></div> </div></div> <div class="container-fluid"><div class="row" data-svelte-h="svelte-19y0ex5"><div class="col-md-3"></div> <div class="col-md-6 proclaimer-text section-header svelte-1dg5kgu">DĚNÍ V JEHNICÍCH</div> <div class="col-md-3"></div></div> <div class="row"><div class="col-md-2"></div> <div class="action-tile col-md-8 svelte-s10a5m" style="background-image: url('/pohled01.JPG')"><a class="tile-link svelte-s10a5m" href="/akce/detail/predcasne-volby-2023.html"><div class="action-tile__title svelte-s10a5m">Predčasné volby v Jehnicích</div> <div class="action-tile__date svelte-s10a5m">9.12.2023</div></a> </div> <div class="col-md-2"></div></div> <div class="d-flex align-items-center justify-content-center mt-4" data-svelte-h="svelte-20oe36"><a href="/akce" class="btn-more svelte-1dg5kgu">Všechny akce</a></div> <div class="row" data-svelte-h="svelte-1g1i33f"><div class="col-md-2"></div> <div class="col-md-8 separator svelte-1wkr8tb"></div> <div class="col-md-2"></div> </div></div> <div class="container-fluid" data-svelte-h="svelte-1icxxrx"><div class="row"><div class="col-md-2"></div> <div class="col-md-8"><div class="footer-disclaimer svelte-1s18an5"><div class="footer-disclaimer__title svelte-1s18an5">Jehnice nám nejsou lhostejné</div> <p class="svelte-1s18an5">Taky vám není jedno, co se Jehnicích děje a chcete, aby byl váš názor slyšet? Napište nám svoje náměty a postřehy. Všechny si přečteme a případně dáme rovnou podnět k řešení.</p> <a class="btn-more btn-more--footer svelte-1s18an5" href="/kontakt.html.html">Napište nám</a></div></div> <div class="col-md-2"></div></div> </div> <div class="footer-separator svelte-1bsja1q" data-svelte-h="svelte-1w54orq"></div> <footer class="container ml-0 mr-0" data-svelte-h="svelte-11f0jni"><div class="row footer svelte-1bsja1q"><div class="col-md-2"></div> <div class="col-md-8 link-container svelte-1bsja1q"><div class="logo-container"><a href="/">LOGO</a></div> <div class="footer-link svelte-1bsja1q"><a href="/lide" class="svelte-1bsja1q">Lidé</a></div> <div class="footer-link svelte-1bsja1q"><a href="/program" class="svelte-1bsja1q">Program</a></div> <div class="footer-link svelte-1bsja1q"><a href="/kontakt" class="svelte-1bsja1q">Kontakt</a></div> <div class="footer-link svelte-1bsja1q"><a href="/akce" class="svelte-1bsja1q">Akce</a></div> <div class="footer-mobile svelte-1bsja1q">Společně v Jehnicích</div></div> <div class="col-md-2"></div></div></footer>  
+			
+			<script>
+				{
+					__sveltekit_5ri03c = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						env: {}
+					};
 
-  <div id="settings-overlay" class="settings-overlay">
-   <div class="d-flex flex-row mt-2 align-items-center">
-    <div class="settings-header">Možnosti zobrazení</div>
-    <img id="close-btn" src="/x-solid-2.682406ba.svg" class="animation-controls__icon close-btn" alt="">
+					const element = document.currentScript.parentElement;
 
-   </div>
-      <div class="options-container">
-    <div class="option">
-      <div class="option-description">
-        Zobrazit učitele
-      </div>
+					const data = [null,null];
 
-      <div class="option-toggles">
-        <div class="form-check form-switch">
-          <input class="form-check-input settings-switch" type="checkbox" role="switch" id="mentor-switch">
-        </div>
-      </div>
-    </div>
-    <div class="option">
-      <div class="option-description">
-        Vycentrovat učitele
-      </div>
+					Promise.all([
+						import("./_app/immutable/entry/start.f32c5b43.js"),
+						import("./_app/immutable/entry/app.17cd615f.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element, {
+							node_ids: [0, 5],
+							data,
+							form: null,
+							error: null
+						});
+					});
+				}
+			</script>
+		</div>
+	</body>
 
-      <div class="option-toggles">
-        <div class="form-check form-switch">
-          <input class="form-check-input settings-switch" type="checkbox" role="switch" id="mentor-switch-centered">
-        </div>
-      </div>
-    </div>
+	<!-- <script defer>
 
-    <div class="option">
-      <div class="option-description">
-        Normalizovat všechny končetiny
-      </div>
+	const scrollableCandidates = document.querySelectorAll('.hidden')
+		
+	const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        console.log(entry)
+        if (entry.isIntersecting) {
+		  console.log("I am intersecting")
+          entry.target.classList.add('show');
+        } else {
+		  console.log("I not am intersecting")
+          entry.target.classList.remove('show');
+        }
+      })
+    });
 
-      <div class="option-toggles">
-        <div class="form-check form-switch">
-          <input class="form-check-input settings-switch" type="checkbox" role="switch" id="normalize-limbs-switch">
-        </div>
-      </div>
-    </div>
-    <div class="option">
-      <div class="option-description">
-        Zobrazenit hranice rozdílnosti pro kloub
-      </div>
+    
+	scrollableCandidates.forEach(el => console.log(el))
+    scrollableCandidates.forEach((el) => observer.observe(el));
+	
+	</script>
+	<style>
+	  .hidden {
+        opacity: 0;
+		filter: blur(5px);
+		transform: translateX(-100%);
+        transition: 500ms;
+  	  }
 
-      <div class="option-toggles">
-        <select class="joint-select" name="jointSelectZones" id="joint-select-threshold">
-          <option value="-1">Žádný</option>
-          <option value="0">Střed</option>
-          <option value="1">Levá kyčel</option>
-          <option value="2">Levé koleno</option>
-          <option value="3">Levý kotník</option>
-          <option value="4">Levá šlapka</option>
-          <option value="5">L. prsty u nohou</option>
-          <option value="6">Pravá kyčel</option>
-          <option value="7">Pravé koleno</option>
-          <option value="8">Pravý kotník</option>
-          <option value="9">Pravá šlapka</option>
-          <option value="10">P. prsty u nohou</option>
-          <option value="11">Bedra</option>
-          <option value="12">Břicho</option>
-          <option value="13">Hruď</option>
-          <option value="14">Pod krkem</option>
-          <option value="15">Nad krkem</option>
-          <option value="16">Hlava</option>
-          <option value="17">Levé rameno</option>
-          <option value="18">Levý loket</option>
-          <option value="19">Levé předloktí</option>
-          <option value="20">Levé zápěstí</option>
-          <option value="21">Levá dlaň</option>
-          <option value="22">Levé prsty</option>
-          <option value="23">L. palec na ruce</option>
-          <option value="24">Pravé rameno</option>
-          <option value="25">Pravý loket</option>
-          <option value="26">Pravé předloktí</option>
-          <option value="27">Pravé zápěstí</option>
-          <option value="28">Pravá dlaň</option>
-          <option value="29">Pravé prsty</option>
-          <option value="30">P. palec na ruce</option>
-        </select>
-      </div>
-    </div>
+  	  .show {
+    	opacity: 1;
+		filter: blur(0);
+		transform: translateX(0);
+      }
 
-    <div class="option">
-      <div class="option-description">
-        Animovat podle mapování kloubu
-      </div>
-
-      <div class="option-toggles">
-        <select class="joint-select" name="jointSelectTracking" id="joint-select-tracking">
-          <option value="-1">Žádný</option>
-          <option value="0">Střed</option>
-          <option value="1">Levá kyčel</option>
-          <option value="2">Levé koleno</option>
-          <option value="3">Levý kotník</option>
-          <option value="4">Levá šlapka</option>
-          <option value="5">L. prsty u nohou</option>
-          <option value="6">Pravá kyčel</option>
-          <option value="7">Pravé koleno</option>
-          <option value="8">Pravý kotník</option>
-          <option value="9">Pravá šlapka</option>
-          <option value="10">P. prsty u nohou</option>
-          <option value="11">Bedra</option>
-          <option value="12">Břicho</option>
-          <option value="13">Hruď</option>
-          <option value="14">Krk</option>
-          <option value="15">Hlava</option>
-          <option value="16">Čelo</option>
-          <option value="17">Levé rameno</option>
-          <option value="18">Levý loket</option>
-          <option value="19">Levé předloktí</option>
-          <option value="20">Levé zápěstí</option>
-          <option value="21">Levá dlaň</option>
-          <option value="22">Levé prsty</option>
-          <option value="23">L. palec na ruce</option>
-          <option value="24">Pravé rameno</option>
-          <option value="25">Pravý loket</option>
-          <option value="26">Pravé předloktí</option>
-          <option value="27">Pravé zápěstí</option>
-          <option value="28">Pravá dlaň</option>
-          <option value="29">Pravé prsty</option>
-          <option value="30">P. palec na ruce</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="option">
-      <div class="option-description">
-        Nastavit citlivost pro specifický kloub
-      </div>
-
-      <div class="option-toggles">
-        <select class="joint-select" name="jointSelectSpecificTracking" id="joint-select-specific-tracking">
-          <option value="-1">Žádný</option>
-          <option value="0">Střed</option>
-          <option value="1">Levá kyčel</option>
-          <option value="2">Levé koleno</option>
-          <option value="3">Levý kotník</option>
-          <option value="4">Levá šlapka</option>
-          <option value="5">L. prsty u nohou</option>
-          <option value="6">Pravá kyčel</option>
-          <option value="7">Pravé koleno</option>
-          <option value="8">Pravý kotník</option>
-          <option value="9">Pravá šlapka</option>
-          <option value="10">P. prsty u nohou</option>
-          <option value="11">Bedra</option>
-          <option value="12">Břicho</option>
-          <option value="13">Hruď</option>
-          <option value="14">Krk</option>
-          <option value="15">Hlava</option>
-          <option value="16">Čelo</option>
-          <option value="17">Levé rameno</option>
-          <option value="18">Levý loket</option>
-          <option value="19">Levé předloktí</option>
-          <option value="20">Levé zápěstí</option>
-          <option value="21">Levá dlaň</option>
-          <option value="22">Levé prsty</option>
-          <option value="23">L. palec na ruce</option>
-          <option value="24">Pravé rameno</option>
-          <option value="25">Pravý loket</option>
-          <option value="26">Pravé předloktí</option>
-          <option value="27">Pravé zápěstí</option>
-          <option value="28">Pravá dlaň</option>
-          <option value="29">Pravé prsty</option>
-          <option value="30">P. palec na ruce</option>
-        </select>
-
-        <button type="button" id="threshold-specific-decrease" class="btn btn-secondary"> - </button>
-        <button type="button" id="threshold-specific-increase" class="btn btn-primary"> + </button>  
-
-      </div>
-    </div>
-
-    <div class="option">
-      <div class="option-description">
-        Nastavit citlivost pro rozdílnost všech kloubů
-      </div>
-
-      <div class="option-toggles">
-        <button type="button" id="threshold-decrease" class="btn btn-secondary"> - </button>
-        <button type="button" id="threshold-increase" class="btn btn-primary"> + </button>  
-      </div>
-    </div>
-
-
-   </div>
-  </div>
-
-  <script src="/index.e82f28a0.js" defer="">
-</script>
-</body>
+	</style> -->
 </html>
